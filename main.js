@@ -73,9 +73,11 @@ const konamiMsg= document.getElementById('konamiMsg');
 const partyPop= document.getElementById('partyPop');
 const cryCount= document.getElementById('cryCount');
 const pViewToggle = document.getElementById('pViewToggle');
-const btnAnim = document.getElementById('btnAnim');
-const btnVideo = document.getElementById('btnVideo');
-const ytWrap  = document.getElementById('ytWrap');
+const btnAnim    = document.getElementById('btnAnim');
+const btnVideo   = document.getElementById('btnVideo');
+const btnLyrics  = document.getElementById('btnLyrics');
+const ytWrap     = document.getElementById('ytWrap');
+const lyricsPanel = document.getElementById('lyricsPanel');
 const pMood   = document.getElementById('pMood');
 const pYtLink = document.getElementById('pYtLink');
 
@@ -295,17 +297,13 @@ function buildZones() {
 // ─── YouTube-режим ────────────────────────────────────────────────────────────
 function setView(mode) {
   ytMode = (mode === 'yt');
-  if (ytMode) {
-    canvas.style.display = 'none';
-    ytWrap.classList.add('active');
-    btnAnim.classList.remove('active');
-    btnVideo.classList.add('active');
-  } else {
-    canvas.style.display = 'block';
-    ytWrap.classList.remove('active');
-    btnAnim.classList.add('active');
-    btnVideo.classList.remove('active');
-  }
+  const isLyrics = (mode === 'lyrics');
+  canvas.style.display = (!ytMode && !isLyrics) ? 'block' : 'none';
+  ytWrap.classList.toggle('active', ytMode);
+  lyricsPanel.classList.toggle('active', isLyrics);
+  btnAnim.classList.toggle('active', !ytMode && !isLyrics);
+  btnVideo.classList.toggle('active', ytMode);
+  btnLyrics.classList.toggle('active', isLyrics);
 }
 
 function loadYT(videoId) {
@@ -335,6 +333,7 @@ btnVideo.addEventListener('click', () => {
     setView('yt');
   }
 });
+btnLyrics.addEventListener('click', () => setView('lyrics'));
 
 // ─── Открыть трек ─────────────────────────────────────────────────────────────
 function openTrack(t) {
@@ -345,9 +344,15 @@ function openTrack(t) {
   const idx = TRACKS.indexOf(t);
   pCounter.textContent = (idx+1) + ' / ' + TRACKS.length;
 
-  // YouTube / TikTok ссылка и тогл
+  // Lyrics
+  const rawLyrics = (typeof LYRICS !== 'undefined' && LYRICS[t.n]) || null;
+  lyricsPanel.innerHTML = rawLyrics
+    ? rawLyrics.split('\n').map(line => line ? '<p>' + line + '</p>' : '<br>').join('')
+    : '<p class="no-lyrics">текст не найден</p>';
+
+  // YouTube / TikTok ссылка и кнопка клипа
   if (t.youtube || t.tiktok) {
-    pViewToggle.classList.add('visible');
+    btnVideo.style.display = '';
     if (t.youtube) {
       pYtLink.href = 'https://www.youtube.com/watch?v=' + t.youtube;
       pYtLink.textContent = 'смотреть на YouTube ↗';
@@ -359,10 +364,10 @@ function openTrack(t) {
     if (ytMode && t.tiktok) loadTikTok(t.tiktok);
     else if (ytMode && t.youtube) loadYT(t.youtube);
   } else {
-    pViewToggle.classList.remove('visible');
+    btnVideo.style.display = 'none';
     pYtLink.style.display = 'none';
     ytWrap.innerHTML = '';
-    setView('anim');
+    if (ytMode) setView('anim');
   }
 
   overlay.classList.add('open');
@@ -389,8 +394,10 @@ function closePlayer() {
   currentTrack = null;
   stopAudio();
   ytWrap.innerHTML = '';
-  pViewToggle.classList.remove('visible');
+  lyricsPanel.innerHTML = '';
   pYtLink.style.display = 'none';
+  btnVideo.style.display = '';
+  setView('anim');
 }
 
 function prevTrack() {
