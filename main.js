@@ -76,6 +76,7 @@ const pViewToggle = document.getElementById('pViewToggle');
 const btnAnim    = document.getElementById('btnAnim');
 const btnVideo   = document.getElementById('btnVideo');
 const btnLyrics  = document.getElementById('btnLyrics');
+const btnKaraoke = document.getElementById('btnKaraoke');
 const ytWrap     = document.getElementById('ytWrap');
 const lyricsPanel = document.getElementById('lyricsPanel');
 const pMood   = document.getElementById('pMood');
@@ -89,6 +90,10 @@ let rafId = null;
 let zonesBuilt = false;
 let loopMode = false;
 let ytMode = false;
+let karaokeMode = false;
+let karaokeLines = [];
+let karaokeRafId = null;
+let kPrevIdx = -1;
 
 // ─── Счётчик слёз ────────────────────────────────────────────────────────────
 if (tears > 0) cryCount.textContent = `ты уже плакал ${tears} раз`;
@@ -294,16 +299,96 @@ function buildZones() {
   });
 }
 
-// ─── YouTube-режим ────────────────────────────────────────────────────────────
+// ─── LRC парсер ───────────────────────────────────────────────────────────────
+function parseLRC(str) {
+  return str.split('\n')
+    .map(line => {
+      const m = line.match(/^\[(\d+):(\d+\.\d+)\]\s*(.*)/);
+      if (!m) return null;
+      return { time: parseInt(m[1]) * 60 + parseFloat(m[2]), text: m[3].trim() };
+    })
+    .filter(l => l && l.text);
+}
+
+// ─── Каráoke RAF ──────────────────────────────────────────────────────────────
+function karaokeFrame() {
+  if (!karaokeMode || !currentTrack) return;
+  karaokeRafId = requestAnimationFrame(karaokeFrame);
+
+  if (!sound) return;
+  const pos = sound.seek();
+  if (typeof pos !== 'number') return;
+
+  let idx = -1;
+  for (let i = 0; i < karaokeLines.length; i++) {
+    if (karaokeLines[i].time <= pos) idx = i; else break;
+  }
+  if (idx === kPrevIdx) return;
+  kPrevIdx = idx;
+
+  if (idx < 0) { lyricsPanel.innerHTML = ''; return; }
+
+  const cur = karaokeLines[idx];
+  const nextTime = karaokeLines[idx + 1] ? karaokeLines[idx + 1].time : cur.time + 8;
+  const lineDur = Math.max(nextTime - cur.time, 0.5);
+  const words = cur.text.split(' ');
+
+  let html = '';
+  for (let i = Math.max(0, idx - 2); i < idx; i++)
+    html += '<p class="kline kline-prev">' + karaokeLines[i].text + '</p>';
+
+  const elapsed = pos - cur.time;
+  const wIdx = Math.floor((elapsed / lineDur) * words.length);
+  const wordsHtml = words.map((w, i) =>
+    '<span class="kword' + (i <= wIdx ? ' kword-sung' : '') + '">' + w + '</span>'
+  ).join(' ');
+  html += '<p class="kline kline-cur">' + wordsHtml + '</p>';
+
+  for (let i = idx + 1; i < Math.min(karaokeLines.length, idx + 4); i++)
+    html += '<p class="kline kline-next">' + karaokeLines[i].text + '</p>';
+
+  lyricsPanel.innerHTML = html;
+}
+
+function startKaraoke(trackN) {
+  stopKaraoke();
+  const lrc = (typeof KARAOKE !== 'undefined') && KARAOKE[trackN];
+  if (!lrc) {
+    lyricsPanel.innerHTML = '<p class="kline kline-cur" style="font-size:14px;opacity:.5">каráoke недоступно</p>';
+    return;
+  }
+  karaokeLines = parseLRC(lrc);
+  kPrevIdx = -1;
+  karaokeRafId = requestAnimationFrame(karaokeFrame);
+}
+
+function stopKaraoke() {
+  if (karaokeRafId) { cancelAnimationFrame(karaokeRafId); karaokeRafId = null; }
+  karaokeLines = [];
+  kPrevIdx = -1;
+}
+
+// ─── Переключатель вида ───────────────────────────────────────────────────────
 function setView(mode) {
-  ytMode = (mode === 'yt');
-  const isLyrics = (mode === 'lyrics');
-  canvas.style.display = (!ytMode && !isLyrics) ? 'block' : 'none';
+  ytMode     = (mode === 'yt');
+  karaokeMode = (mode === 'karaoke');
+  const isLyrics  = (mode === 'lyrics');
+  const isAnim    = !ytMode && !isLyrics && !karaokeMode;
+
+  // Canvas: видим в аним + каráoke (анимация за текстом)
+  canvas.style.display = (isAnim || karaokeMode) ? 'block' : 'none';
   ytWrap.classList.toggle('active', ytMode);
-  lyricsPanel.classList.toggle('active', isLyrics);
-  btnAnim.classList.toggle('active', !ytMode && !isLyrics);
-  btnVideo.classList.toggle('active', ytMode);
-  btnLyrics.classList.toggle('active', isLyrics);
+
+  lyricsPanel.classList.toggle('active', isLyrics || karaokeMode);
+  lyricsPanel.classList.toggle('karaoke', karaokeMode);
+
+  btnAnim.classList.toggle('active',    isAnim);
+  btnVideo.classList.toggle('active',   ytMode);
+  btnLyrics.classList.toggle('active',  isLyrics);
+  btnKaraoke.classList.toggle('active', karaokeMode);
+
+  if (karaokeMode && currentTrack) startKaraoke(currentTrack.n);
+  else stopKaraoke();
 }
 
 function loadYT(videoId) {
@@ -333,7 +418,8 @@ btnVideo.addEventListener('click', () => {
     setView('yt');
   }
 });
-btnLyrics.addEventListener('click', () => setView('lyrics'));
+btnLyrics.addEventListener('click',   () => setView('lyrics'));
+btnKaraoke.addEventListener('click',  () => setView('karaoke'));
 
 // ─── Открыть трек ─────────────────────────────────────────────────────────────
 function openTrack(t) {
@@ -374,6 +460,8 @@ function openTrack(t) {
   resizeCanvas();
   startAnim(t.anim);
 
+  if (karaokeMode) startKaraoke(t.n);
+
   document.querySelectorAll('.track-zone').forEach(z => z.classList.remove('playing'));
   const z = document.getElementById('zone-'+t.n);
   if (z) z.classList.add('playing');
@@ -390,6 +478,7 @@ function closePlayer() {
   overlay.classList.remove('open');
   animRunning = false;
   cancelAnimationFrame(rafId);
+  stopKaraoke();
   document.querySelectorAll('.track-zone').forEach(z => z.classList.remove('playing'));
   currentTrack = null;
   stopAudio();
