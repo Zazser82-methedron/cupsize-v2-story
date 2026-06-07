@@ -387,8 +387,19 @@ function setView(mode) {
   btnLyrics.classList.toggle('active',  isLyrics);
   btnKaraoke.classList.toggle('active', karaokeMode);
 
-  if (karaokeMode && currentTrack) startKaraoke(currentTrack.n);
-  else stopKaraoke();
+  if (karaokeMode && currentTrack) {
+    startKaraoke(currentTrack.n);
+  } else {
+    stopKaraoke();
+    if (isLyrics && currentTrack) showStaticLyrics(currentTrack.n);
+  }
+}
+
+function showStaticLyrics(trackN) {
+  const raw = (typeof LYRICS !== 'undefined' && LYRICS[trackN]) || null;
+  lyricsPanel.innerHTML = raw
+    ? raw.split('\n').map(l => l ? '<p>' + l + '</p>' : '<br>').join('')
+    : '<p class="no-lyrics">текст не найден</p>';
 }
 
 function loadYT(videoId) {
@@ -430,11 +441,8 @@ function openTrack(t) {
   const idx = TRACKS.indexOf(t);
   pCounter.textContent = (idx+1) + ' / ' + TRACKS.length;
 
-  // Lyrics
-  const rawLyrics = (typeof LYRICS !== 'undefined' && LYRICS[t.n]) || null;
-  lyricsPanel.innerHTML = rawLyrics
-    ? rawLyrics.split('\n').map(line => line ? '<p>' + line + '</p>' : '<br>').join('')
-    : '<p class="no-lyrics">текст не найден</p>';
+  // Lyrics (populate for static mode; karaoke reloads on its own)
+  if (!karaokeMode) showStaticLyrics(t.n);
 
   // YouTube / TikTok ссылка и кнопка клипа
   if (t.youtube || t.tiktok) {
