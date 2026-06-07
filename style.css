@@ -334,9 +334,11 @@ body::before {
 /* Режим с текстом — раскладка в строку */
 .player-inner.has-lyrics {
   width: min(1080px, 96vw);
+  max-height: calc(100vh - 36px);
   flex-direction: row;
   align-items: stretch;
   gap: 14px;
+  overflow: hidden;
 }
 
 /* Левая колонка: контролы + анимация */

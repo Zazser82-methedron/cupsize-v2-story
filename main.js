@@ -95,6 +95,7 @@ let lyricsState = 0;
 let karaokeLines = [];
 let karaokeRafId = null;
 let kPrevIdx = -1;
+let lyricsFadeTimer = null;
 
 // ─── Счётчик слёз ────────────────────────────────────────────────────────────
 if (tears > 0) cryCount.textContent = `ты уже плакал ${tears} раз`;
@@ -407,9 +408,11 @@ function setView(mode) {
   btnAnim.classList.toggle('active',   mode === 'anim');
   btnVideo.classList.toggle('active',  ytMode);
   btnLyrics.classList.toggle('active', hasText);
-  btnLyrics.textContent = lyricsState === 2 ? '♩ кар.' : '✎ текст';
+  btnLyrics.textContent = lyricsState === 1 ? '✎ текст' : '♩ кар.';
 
   stopKaraoke();
+  clearTimeout(lyricsFadeTimer);
+  lyricsFadeTimer = null;
   const panelWasVisible = lyricsPanel.classList.contains('active') && lyricsPanel.innerHTML;
   const doContent = () => {
     if (lyricsState === 1 && currentTrack) showStaticLyrics(currentTrack.n);
@@ -417,8 +420,13 @@ function setView(mode) {
   };
   if (hasText && panelWasVisible) {
     lyricsPanel.style.opacity = '0';
-    setTimeout(() => { doContent(); lyricsPanel.style.opacity = ''; }, 160);
+    lyricsFadeTimer = setTimeout(() => {
+      lyricsFadeTimer = null;
+      doContent();
+      lyricsPanel.style.opacity = '';
+    }, 160);
   } else {
+    lyricsPanel.style.opacity = '';
     doContent();
   }
 }
@@ -445,10 +453,10 @@ btnVideo.addEventListener('click', () => {
   if (currentTrack.tiktok) { loadTikTok(currentTrack.tiktok); setView('yt'); }
   else if (currentTrack.youtube) { loadYT(currentTrack.youtube); setView('yt'); }
 });
-// Цикл: аним→текст→каráoke→аним
+// Цикл: аним→кар.→текст→аним
 btnLyrics.addEventListener('click', () => {
-  if (lyricsState === 0) setView('lyrics');
-  else if (lyricsState === 1) setView('karaoke');
+  if (lyricsState === 0) setView('karaoke');
+  else if (lyricsState === 2) setView('lyrics');
   else setView('anim');
 });
 
@@ -461,7 +469,10 @@ function openTrack(t) {
   const idx = TRACKS.indexOf(t);
   pCounter.textContent = (idx+1) + ' / ' + TRACKS.length;
 
-  // Текст: обновить при смене трека
+  // Текст: сбросить fade и обновить при смене трека
+  clearTimeout(lyricsFadeTimer);
+  lyricsFadeTimer = null;
+  lyricsPanel.style.opacity = '';
   if (lyricsState === 1) showStaticLyrics(t.n);
   if (lyricsState === 2) startKaraoke(t.n);
 
@@ -488,8 +499,6 @@ function openTrack(t) {
   overlay.classList.add('open');
   resizeCanvas();
   startAnim(t.anim);
-
-  if (lyricsState === 2) startKaraoke(t.n);
 
   document.querySelectorAll('.track-zone').forEach(z => z.classList.remove('playing'));
   const z = document.getElementById('zone-'+t.n);
@@ -523,7 +532,7 @@ function closePlayer() {
   btnAnim.classList.add('active');
   btnVideo.classList.remove('active');
   btnLyrics.classList.remove('active');
-  btnLyrics.textContent = '✎ текст';
+  btnLyrics.textContent = '♩ кар.';
 }
 
 function prevTrack() {
