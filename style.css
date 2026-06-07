@@ -1,0 +1,634 @@
+/* ═══════════════════════════════
+   BASE
+═══════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:   #cec8bc;
+  --bg2:  #bdb5a6;
+  --ink:  #16120e;
+  --dim:  #7a7268;
+  --red:  #b8220e;
+  --pink: #e8a8b8;
+  --font: 'Caveat', cursive;
+  --font2:'Caveat Brush', cursive;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  overflow: hidden;
+  /* Зернистость бумаги */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.09'/%3E%3C/svg%3E");
+}
+
+/* Тёмная виньетка по краям — атмосфера TWoM */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%,
+    transparent 28%,
+    rgba(6,4,2,0.38) 65%,
+    rgba(4,2,0,0.72) 100%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Эффект держащей карандаш руки */
+@keyframes shake {
+  from { transform: translate(-1px,  1px); }
+  to   { transform: translate( 1px, -1px); }
+}
+
+@keyframes pencil-jitter {
+  0%        { transform: translate(0,      0)       rotate(0deg);    }
+  14%       { transform: translate(0.5px, -0.4px)   rotate(0.2deg);  }
+  28%       { transform: translate(-0.4px, 0.5px)   rotate(-0.15deg);}
+  42%       { transform: translate(0.3px,  0.4px)   rotate(0.1deg);  }
+  57%       { transform: translate(-0.5px,-0.3px)   rotate(-0.2deg); }
+  71%       { transform: translate(0.4px, -0.5px)   rotate(0.15deg); }
+  85%       { transform: translate(-0.3px, 0.3px)   rotate(-0.1deg); }
+  100%      { transform: translate(0,      0)       rotate(0deg);    }
+}
+
+/* Бумажные линии убраны */
+
+/* ═══════════════════════════════
+   PAGES — fixed fullscreen panels
+═══════════════════════════════ */
+.page {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 60px 20px 60px;
+  gap: 22px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.85s ease;
+  z-index: 2;
+}
+.page.active { opacity: 1; pointer-events: all; }
+
+/* Age gate и landing — центрируем вертикально */
+#pg0, #pg1 { justify-content: center; }
+
+/* ═══════════════════════════════
+   PAGE 1 — мальчик
+═══════════════════════════════ */
+
+.boy-wrap {
+  position: relative;
+  width: min(360px, 78vw);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  filter: url(#pencil);
+  animation: shake 0.15s infinite alternate;
+}
+.boy-wrap:hover { transform: scale(1.015) rotate(-0.5deg); }
+.boy-wrap:active { transform: scale(0.97); }
+
+.boy-img {
+  width: 100%;
+  display: block;
+  transition: transform 0.12s ease;
+}
+
+/* Слёзы */
+.tear-layer {
+  position: absolute;
+  bottom: 24%;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 0 30%;
+  pointer-events: none;
+}
+.tear-layer.small { bottom: 19%; padding: 0 34%; }
+
+.tear-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.td-r .drop { animation-delay: 0.8s; }
+.td-r .d2   { animation-delay: 1.3s; }
+
+.drop {
+  width: 10px; height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 50% 50% 60% 60%;
+  background: rgba(100,160,230,0.08);
+  animation: drip 2.6s ease-in infinite;
+  filter: url(#pencil);
+}
+.drop.d2 { width: 8px; height: 13px; animation-delay: 1.1s; animation-duration: 3.1s; }
+
+@keyframes drip {
+  0%       { transform: translateY(0); opacity: 0; }
+  8%       { opacity: 1; }
+  65%      { transform: translateY(20px); opacity: 0.8; }
+  66%, 99% { opacity: 0; transform: translateY(20px); }
+  100%     { transform: translateY(0); opacity: 0; }
+}
+
+/* Зрачки убраны */
+.eye-canvas { display: none; }
+
+/* Заголовок */
+.title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: clamp(24px, 5vw, 42px);
+  filter: url(#pencil);
+}
+.hero-title  { font-family: var(--font2); font-size: 1.1em; }
+.hero-dash   { color: var(--dim); }
+.hero-sub    { color: var(--dim); font-size: 0.82em; }
+
+.click-hint {
+  font-size: 14px;
+  color: var(--dim);
+  animation: pulse 2.8s ease-in-out infinite;
+  filter: url(#pencil);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50%       { opacity: 0.9; transform: translateY(-3px); }
+}
+
+.cry-count {
+  position: fixed;
+  bottom: 18px; right: 20px;
+  font-size: 12px; color: var(--dim);
+  opacity: 0.4; pointer-events: none;
+  font-family: var(--font);
+  z-index: 10;
+}
+
+/* ═══════════════════════════════
+   PAGE 0 — age gate
+═══════════════════════════════ */
+.age-box { text-align: center; }
+.age-num {
+  font-family: var(--font2);
+  font-size: clamp(64px, 20vw, 110px);
+  color: var(--ink); line-height: 1;
+}
+.age-text {
+  font-size: clamp(16px, 3vw, 22px);
+  color: var(--dim); line-height: 1.7;
+  margin: 12px 0 30px;
+  filter: url(#pencil);
+}
+.age-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.age-btn {
+  font-family: var(--font); font-size: clamp(16px, 3vw, 20px);
+  padding: 12px 30px;
+  background: none;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  filter: url(#pencil);
+}
+.age-btn:hover { background: var(--ink); color: var(--bg); }
+.age-btn--no { color: var(--dim); border-color: var(--dim); }
+.age-btn--no:hover { background: var(--dim); color: var(--bg); }
+
+/* ═══════════════════════════════
+   PAGE 2 — треклист
+═══════════════════════════════ */
+#pg2 {
+  padding-top: 52px;
+  padding-bottom: 24px;
+  gap: 10px;
+}
+
+.back-btn {
+  position: fixed; top: 16px; left: 16px;
+  background: none; border: none;
+  font-family: var(--font); font-size: 17px;
+  color: var(--ink); cursor: pointer; opacity: 0.5;
+  z-index: 90; transition: opacity 0.2s;
+  filter: url(#pencil);
+}
+.back-btn:hover { opacity: 1; }
+
+/* Треклист — враппер */
+.tl-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: min(820px, 96vw);
+  animation: shake 0.15s infinite alternate;
+}
+.tl-img {
+  display: block;
+  max-height: calc(100vh - 140px);
+  width: auto;
+  max-width: 100%;
+  filter: contrast(1.06) url(#pencil);
+}
+
+/* Зоны треклиста */
+.track-zone {
+  position: absolute;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background 0.18s, border-color 0.18s;
+}
+.track-zone:hover {
+  background: rgba(190, 165, 120, 0.3);
+  border-color: rgba(110, 82, 42, 0.38);
+  filter: url(#pencil);
+}
+.track-zone.playing {
+  background: rgba(168, 132, 78, 0.38);
+  border-color: rgba(108, 80, 30, 0.52);
+  animation: zone-beat 1.4s ease-in-out infinite, shake 0.15s infinite alternate;
+}
+@keyframes zone-beat {
+  0%,100% { background: rgba(168,132,78,0.38); }
+  50%      { background: rgba(195,152,88,0.50); }
+}
+.zone-label {
+  position: absolute;
+  bottom: 4px; left: 4px;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--ink);
+  opacity: 0.5;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Блок перехода к Яндекс.Музыке */
+.ya-section {
+  width: min(820px, 96vw);
+  display: flex;
+  align-items: stretch;
+}
+.ya-link-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border: 2px solid var(--ink);
+  text-decoration: none;
+  color: var(--ink);
+  font-family: var(--font2);
+  font-size: clamp(16px, 2.8vw, 24px);
+  background: var(--bg);
+  filter: url(#pencil);
+  transition: background 0.22s ease, color 0.22s ease;
+  cursor: pointer;
+}
+.ya-link-btn:hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+.ya-link-icon { font-size: 1.3em; }
+
+/* ═══════════════════════════════
+   ПЛЕЕР ОВЕРЛЕЙ
+═══════════════════════════════ */
+.player-overlay {
+  position: fixed; inset: 0;
+  background: rgba(250,248,244,0.96);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.player-overlay.open {
+  display: flex;
+  animation: overlay-in 0.3s ease;
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.player-inner {
+  width: min(500px, 94vw);
+  position: relative;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 8px;
+}
+
+/* Карандашный шейк — эффект держащей руки */
+.title-line,
+.age-num,
+.age-text,
+.age-btn,
+.back-btn,
+.ya-label,
+.ya-link-btn,
+.p-nav-btn,
+.p-close,
+.konami-msg,
+.popup-msg,
+.party-pop img {
+  animation: shake 0.15s infinite alternate;
+}
+.click-hint { animation: pulse 2.8s ease-in-out infinite, shake 0.15s infinite alternate; }
+
+/* Угловые метки */
+.player-inner::before, .player-inner::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--red);
+  border-style: solid;
+  pointer-events: none;
+  filter: url(#pencil);
+}
+.player-inner::before { top: -2px; left: -2px; border-width: 2px 0 0 2px; }
+.player-inner::after  { bottom: -2px; right: -2px; border-width: 0 2px 2px 0; }
+
+/* Верхняя панель */
+.p-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+.p-center-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.p-nav-btn {
+  background: none; border: none;
+  font-family: var(--font); font-size: 24px;
+  color: var(--ink); cursor: pointer;
+  opacity: 0.4; transition: opacity 0.2s;
+  padding: 4px 8px;
+  filter: url(#pencil);
+  line-height: 1;
+}
+.p-nav-btn:hover { opacity: 1; }
+
+.p-play-btn {
+  background: none; border: 2px solid var(--ink);
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  font-size: 15px;
+  color: var(--ink); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  filter: url(#pencil);
+  line-height: 1;
+  padding: 0;
+}
+.p-play-btn:hover { background: var(--ink); color: var(--bg); }
+
+/* Кнопка повтора */
+.p-loop-btn {
+  background: none; border: none;
+  font-size: 20px;
+  color: var(--dim); cursor: pointer;
+  opacity: 0.35; transition: opacity 0.2s, color 0.2s;
+  padding: 2px 4px;
+  filter: url(#pencil);
+  line-height: 1;
+}
+.p-loop-btn.on  { opacity: 0.9; color: var(--ink); }
+.p-loop-btn:hover { opacity: 0.7; }
+
+/* Строка громкости */
+.p-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -2px;
+}
+.p-vol-icon {
+  font-size: 14px; color: var(--dim); opacity: 0.6; flex-shrink: 0;
+}
+.p-vol-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: rgba(26,22,18,0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.p-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+  cursor: pointer;
+}
+.p-vol-slider::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: none;
+  cursor: pointer;
+}
+
+/* Переключатель анимация / клип */
+.p-view-toggle {
+  display: none;
+  border: 1.5px solid rgba(26,22,18,0.25);
+  border-radius: 3px;
+  overflow: hidden;
+  filter: url(#pencil);
+}
+.p-view-toggle.visible { display: flex; }
+.p-view-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 5px 0;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+.p-view-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+.p-view-btn:not(.active):hover {
+  background: rgba(26,22,18,0.07);
+  color: var(--ink);
+}
+
+.p-close {
+  background: var(--bg); border: 2px solid var(--ink);
+  width: 32px; height: 32px; border-radius: 50%;
+  font-family: var(--font); font-size: 16px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; filter: url(#pencil);
+}
+.p-close:hover { background: var(--ink); color: var(--bg); }
+
+/* Прогресс */
+.p-progress-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.p-time {
+  font-size: 12px; color: var(--dim); font-family: var(--font);
+  white-space: nowrap; min-width: 34px;
+}
+.p-progress {
+  flex: 1; height: 3px;
+  background: rgba(26,22,18,0.12);
+  cursor: pointer; position: relative;
+}
+.p-fill {
+  height: 100%; background: var(--red);
+  width: 0%;
+  transition: width 0.2s linear;
+  pointer-events: none;
+}
+
+/* Холст + YouTube */
+.p-stage {
+  width: 100%; aspect-ratio: 1;
+  background: var(--bg2);
+  border: 2px solid var(--ink);
+  position: relative; overflow: hidden;
+  filter: url(#pencil);
+}
+#animCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* YouTube iframe */
+.yt-wrap {
+  position: absolute; inset: 0;
+  display: none;
+  background: #000;
+}
+.yt-wrap.active { display: block; }
+.yt-wrap iframe { width: 100%; height: 100%; border: none; }
+
+.p-info {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.p-num {
+  font-family: var(--font2); font-size: 22px; color: var(--red);
+}
+.p-counter {
+  font-family: var(--font); font-size: 13px; color: var(--dim);
+  opacity: 0.6; letter-spacing: 0.05em;
+}
+.p-title {
+  font-family: var(--font2); font-size: clamp(18px, 4vw, 28px);
+}
+
+/* Строка мета: настроение + ссылка YouTube */
+.p-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+}
+.p-mood {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--dim);
+  opacity: 0.5;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  padding: 2px 10px;
+  border: 1px solid rgba(26,22,18,0.22);
+  border-radius: 20px;
+}
+.p-mood:empty { display: none; }
+.p-yt-link {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--dim);
+  opacity: 0.55;
+  text-decoration: none;
+  transition: opacity 0.2s;
+  letter-spacing: 0.02em;
+}
+.p-yt-link:hover { opacity: 1; color: var(--red); }
+
+/* ═══════════════════════════════
+   ДЕВОЧКА С ШАРИКОМ
+═══════════════════════════════ */
+/* Девочка с шариком убрана */
+.balloon-wrap { display: none; }
+
+/* ═══════════════════════════════
+   ПАСХАЛКИ
+═══════════════════════════════ */
+.pink-veil {
+  position: fixed; inset: 0;
+  background: var(--pink);
+  mix-blend-mode: multiply;
+  opacity: 0; pointer-events: none;
+  z-index: 80; transition: opacity 1.5s ease;
+}
+.pink-veil.on { opacity: 0.48; }
+
+.konami-msg {
+  position: fixed; bottom: 50px; left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(14px, 2.2vw, 20px);
+  text-align: center; line-height: 1.9;
+  color: #7a1e3c; font-family: var(--font);
+  opacity: 0; pointer-events: none;
+  z-index: 85; max-width: min(380px, 88vw);
+  filter: url(#pencil); transition: opacity 1.3s ease;
+}
+.konami-msg.on { opacity: 1; }
+
+.party-pop {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(250,248,244,0.9);
+  z-index: 200; opacity: 0; pointer-events: none;
+  transition: opacity 0.55s ease; cursor: pointer;
+}
+.party-pop.on { opacity: 1; pointer-events: all; }
+.party-pop img { max-width: 88vw; max-height: 88vh; filter: url(#pencil); }
+
+/* Всплывающее сообщение */
+.popup-msg {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-family: var(--font); font-size: clamp(20px,4vw,32px);
+  color: var(--ink); background: var(--bg);
+  border: 2px solid var(--ink);
+  padding: 18px 36px; z-index: 999;
+  text-align: center; line-height: 1.5;
+  filter: url(#pencil); animation: pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════
+   SCROLLBAR
+═══════════════════════════════ */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ═══════════════════════════════
+   MOBILE
+═══════════════════════════════ */
+@media (max-width: 520px) {
+  .title-line { flex-direction: column; align-items: center; gap: 2px; }
+  .p-view-btn { font-size: 12px; padding: 4px 0; }
+}

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cupsize — заставь меня плакать</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;700&family=Caveat+Brush&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+</head>
+<body>
+
+<!-- SVG pencil filter -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035 0.025" numOctaves="2" seed="3" result="n">
+        <animate attributeName="seed"
+          values="3;7;2;9;4;8;1;6;5;3"
+          dur="1.2s" repeatCount="indefinite" calcMode="discrete"/>
+        <animate attributeName="baseFrequency"
+          values="0.035 0.025;0.038 0.028;0.032 0.022;0.037 0.026;0.034 0.024;0.036 0.027;0.033 0.023;0.039 0.025;0.035 0.025"
+          dur="0.8s" repeatCount="indefinite" calcMode="discrete"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2" xChannelSelector="R" yChannelSelector="G">
+        <animate attributeName="scale"
+          values="2;3;1.5;2.8;1.8;3.2;2;1.6;2.5;2"
+          dur="0.9s" repeatCount="indefinite" calcMode="discrete"/>
+      </feDisplacementMap>
+    </filter>
+  </defs>
+</svg>
+
+<!-- ═══════════════════════════════
+     СТРАНИЦА 0 — age gate
+═══════════════════════════════ -->
+<section id="pg0" class="page active">
+  <div class="age-box">
+    <div class="age-num" style="filter:url(#pencil)">16+</div>
+    <p class="age-text">здесь тёмно<br>и немного больно.<br>тебе можно?</p>
+    <div class="age-btns">
+      <button class="age-btn" id="btnYes">да, мне 16</button>
+      <button class="age-btn age-btn--no" id="btnNo">нет, я маленький</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     СТРАНИЦА 1 — мальчик
+═══════════════════════════════ -->
+<section id="pg1" class="page">
+
+  <div class="boy-wrap" id="boyWrap">
+    <img src="images/cover.png" class="boy-img" id="boyImg" alt="">
+
+    <!-- Слёзы поверх изображения -->
+    <div class="tear-layer">
+      <div class="tear-drop td-l">
+        <div class="drop d1"></div>
+        <div class="drop d2"></div>
+      </div>
+      <div class="tear-drop td-r">
+        <div class="drop d1"></div>
+        <div class="drop d2"></div>
+      </div>
+    </div>
+
+    <!-- Зрачки — canvas overlay -->
+    <canvas class="eye-canvas" id="eyeCanvas"></canvas>
+  </div>
+
+  <div class="title-line">
+    <span class="hero-title" id="heroTitle">Cupsize</span>
+    <span class="hero-dash">—</span>
+    <span class="hero-sub">заставь меня плакать</span>
+  </div>
+
+  <p class="click-hint">нажми на мальчика ↑</p>
+
+  <p class="cry-count" id="cryCount"></p>
+</section>
+
+<!-- ═══════════════════════════════
+     СТРАНИЦА 2 — треклист
+═══════════════════════════════ -->
+<section id="pg2" class="page">
+
+  <button class="back-btn" id="backBtn">← назад</button>
+
+  <!-- Треклист с кликабельными зонами -->
+  <div class="tl-wrap" id="tlWrap">
+    <img src="images/tracklist.png" class="tl-img" id="tlImg" alt="Треклист">
+    <!-- Зоны генерируются JS -->
+  </div>
+
+  <!-- Яндекс Музыка -->
+  <div class="ya-section">
+    <a class="ya-link-btn" id="yaPlayer"
+       href="https://music.yandex.ru/album/42285953"
+       target="_blank" rel="noopener">
+      <span class="ya-link-icon">♫</span>
+      <span>Открыть в Яндекс.Музыке</span>
+    </a>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════
+     ПЛЕЕР-ОВЕРЛЕЙ
+═══════════════════════════════ -->
+<div id="playerOverlay" class="player-overlay">
+  <div class="player-inner">
+    <!-- Навигация -->
+    <div class="p-top-bar">
+      <button class="p-nav-btn" id="pPrev" title="предыдущий">←</button>
+      <div class="p-center-btns">
+        <button class="p-play-btn" id="pPlay" title="пауза / воспроизведение">▶</button>
+        <button class="p-loop-btn" id="pLoop" title="повтор трека">↺</button>
+        <button class="p-close" id="pClose">✕</button>
+      </div>
+      <button class="p-nav-btn" id="pNext" title="следующий">→</button>
+    </div>
+    <!-- Громкость -->
+    <div class="p-vol-row">
+      <span class="p-vol-icon">♪</span>
+      <input type="range" class="p-vol-slider" id="pVolSlider" min="0" max="1" step="0.01" value="0.85">
+    </div>
+    <!-- Переключатель вида (анимация / клип) -->
+    <div class="p-view-toggle" id="pViewToggle">
+      <button class="p-view-btn active" id="btnAnim">≈ анимация</button>
+      <button class="p-view-btn" id="btnVideo">▶ клип</button>
+    </div>
+    <!-- Анимация + YouTube -->
+    <div class="p-stage" id="pStage">
+      <canvas id="animCanvas"></canvas>
+      <div class="yt-wrap" id="ytWrap"></div>
+    </div>
+    <!-- Прогресс -->
+    <div class="p-progress-row">
+      <span class="p-time" id="pTimeCur">0:00</span>
+      <div class="p-progress" id="pProgress">
+        <div class="p-fill" id="pFill"></div>
+      </div>
+      <span class="p-time" id="pTimeTot">0:00</span>
+    </div>
+    <!-- Информация -->
+    <div class="p-info">
+      <span class="p-num" id="pNum">#01</span>
+      <span class="p-counter" id="pCounter">1 / 26</span>
+      <span class="p-title" id="pTitle">трек</span>
+    </div>
+    <!-- Настроение + ссылка на YouTube -->
+    <div class="p-meta-row">
+      <span class="p-mood" id="pMood"></span>
+      <a class="p-yt-link" id="pYtLink" href="#" target="_blank" rel="noopener" style="display:none">смотреть на YouTube ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     ГЛОБАЛЬНЫЕ ОВЕРЛЕИ
+═══════════════════════════════ -->
+
+<!-- Девочка с шариком -->
+<div class="balloon-wrap" id="balloonWrap">
+  <img src="images/balloon.png" class="balloon-img" id="balloonImg" alt="">
+</div>
+
+<!-- Konami: розовый режим -->
+<div id="pinkVeil" class="pink-veil"></div>
+<div id="konamiMsg" class="konami-msg">
+  «никто не знает, где ты окажешься.<br>
+  и это, может быть, единственное,<br>
+  что делает путь по-настоящему твоим.»
+</div>
+
+<!-- Пасхалка: тройной клик = вечеринка -->
+<div id="partyPop" class="party-pop">
+  <img src="images/party.png" alt="">
+</div>
+
+<!-- Глитч при конце трека 25 -->
+<style>
+@keyframes glitch-shift {
+  0%,100%  { clip-path: inset(40% 0 61% 0); transform: translate(-4px,0); }
+  25%      { clip-path: inset(2% 0 80% 0);  transform: translate(4px,0); }
+  50%      { clip-path: inset(70% 0 5% 0);  transform: translate(-3px,0); }
+  75%      { clip-path: inset(20% 0 55% 0); transform: translate(3px,0); }
+}
+body.glitch::before, body.glitch::after {
+  content: ''; position: fixed; inset: 0; z-index: 500; pointer-events: none;
+  background: var(--red);
+  animation: glitch-shift 0.18s steps(1) infinite;
+}
+body.glitch::after { background: #4af; animation-delay: -0.07s; mix-blend-mode: screen; }
+</style>
+
+<script src="main.js?v=8"></script>
+</body>
+</html>
