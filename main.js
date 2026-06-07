@@ -76,9 +76,9 @@ const pViewToggle = document.getElementById('pViewToggle');
 const btnAnim    = document.getElementById('btnAnim');
 const btnVideo   = document.getElementById('btnVideo');
 const btnLyrics  = document.getElementById('btnLyrics');
-const ytWrap     = document.getElementById('ytWrap');
+const ytWrap      = document.getElementById('ytWrap');
 const lyricsPanel = document.getElementById('lyricsPanel');
-const pStageRow   = document.getElementById('pStageRow');
+const playerInner = document.getElementById('playerInner');
 const pMood   = document.getElementById('pMood');
 const pYtLink = document.getElementById('pYtLink');
 
@@ -311,11 +311,6 @@ function parseLRC(str) {
     .filter(l => l && l.text);
 }
 
-// ─── Высота панели = высота stage ─────────────────────────────────────────────
-function syncLyricsPanelHeight() {
-  const h = pStage.clientHeight;
-  if (h > 0) lyricsPanel.style.height = h + 'px';
-}
 
 // ─── Статичный текст ──────────────────────────────────────────────────────────
 function showStaticLyrics(trackN) {
@@ -407,9 +402,7 @@ function setView(mode) {
 
   // Раскрыть/закрыть текстовую панель
   lyricsPanel.classList.toggle('active', hasText);
-  overlay.querySelector('.player-inner').classList.toggle('has-lyrics', hasText && !ytMode);
-
-  if (hasText && !ytMode) syncLyricsPanelHeight();
+  playerInner.classList.toggle('has-lyrics', hasText && !ytMode);
 
   btnAnim.classList.toggle('active',   mode === 'anim');
   btnVideo.classList.toggle('active',  ytMode);
@@ -487,7 +480,7 @@ function openTrack(t) {
   resizeCanvas();
   startAnim(t.anim);
 
-  if (karaokeMode) startKaraoke(t.n);
+  if (lyricsState === 2) startKaraoke(t.n);
 
   document.querySelectorAll('.track-zone').forEach(z => z.classList.remove('playing'));
   const z = document.getElementById('zone-'+t.n);
@@ -514,7 +507,7 @@ function closePlayer() {
   lyricsPanel.innerHTML = '';
   pYtLink.style.display = 'none';
   btnVideo.style.display = '';
-  overlay.querySelector('.player-inner').classList.remove('has-lyrics');
+  playerInner.classList.remove('has-lyrics');
   lyricsPanel.classList.remove('active');
   canvas.style.display = 'block';
   ytWrap.classList.remove('active');
