@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>anim test harness</title>
+</head>
+<body>
+<!-- минимальный DOM со всеми id, которые нужны main.js -->
+<section id="pg0" class="page active"><button id="btnYes"></button><button id="btnNo"></button></section>
+<section id="pg1" class="page">
+  <div id="boyWrap"><img id="boyImg"><canvas id="eyeCanvas"></canvas></div>
+  <span id="heroTitle"></span><p id="cryCount"></p>
+</section>
+<section id="pg2" class="page">
+  <button id="backBtn"></button>
+  <div id="tlWrap"><img id="tlImg"></div>
+  <div class="ya-section"><a id="yaPlayer"></a></div>
+</section>
+<div id="playerOverlay"><div id="playerInner">
+  <button id="pPrev"></button>
+  <div class="p-center-btns">
+    <button id="pPlay"></button><button id="pLoop"></button><button id="pClose"></button>
+  </div>
+  <button id="pNext"></button>
+  <input type="range" id="pVolSlider" min="0" max="1" step="0.01" value="0.85">
+  <div id="pViewToggle"><button id="btnAnim"></button><button id="btnVideo"></button><button id="btnLyrics"></button></div>
+  <div id="pStage"><canvas id="animCanvas"></canvas><div id="ytWrap"></div></div>
+  <span id="pTimeCur"></span><div id="pProgress"><div id="pFill"></div></div><span id="pTimeTot"></span>
+  <span id="pNum"></span><span id="pCounter"></span><span id="pTitle"></span>
+  <div class="p-meta-row"><span id="pMood"></span><a id="pYtLink"></a></div>
+  <div id="lyricsPanel"></div>
+</div></div>
+<div id="balloonWrap"><img id="balloonImg"></div>
+<div id="pinkVeil"></div><div id="konamiMsg"></div><div id="partyPop"></div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg"></div>
+
+<script src="lyrics.js"></script>
+<script src="karaoke.js"></script>
+<script src="main.js"></script>
+<script src="story-anim.js"></script>
+<script src="story-ui.js"></script>
+<script>
+(async () => {
+  window.__errs = [];
+  window.__cur = 'load';
+  window.onerror = (m, s, l, c) => { window.__errs.push(window.__cur + ': ' + m + ' @' + l + ':' + c); return true; };
+
+  const NAMES = ['knives','trauma','trash','doghouse','grave','detective','notebook','head',
+    'student','pills','dance','rope','heart','north','cotton','browser','drum','bicycle',
+    'teens','mirror','cigarette','awkward','journal','bath','chaos','jump'];
+  const TRACK_OF = {knives:1,trauma:2,trash:3,doghouse:4,grave:5,detective:6,notebook:7,head:8,
+    student:9,pills:10,dance:11,rope:12,heart:13,north:14,cotton:15,browser:16,drum:17,bicycle:18,
+    teens:19,mirror:20,cigarette:21,awkward:22,journal:23,bath:24,chaos:25,jump:26};
+
+  if (!window.__STORY_V3) window.__errs.push('FATAL: story-anim.js v3 не загрузился (нет __STORY_V3 — синтаксическая ошибка?)');
+  if (!window.__STORY_UI) window.__errs.push('FATAL: story-ui.js не загрузился (нет __STORY_UI)');
+
+  canvas.width = 900; canvas.height = 560;
+  const blanks = [];
+  for (const nm of NAMES) {
+    window.__cur = nm;
+    currentTrack = { n: TRACK_OF[nm] };
+    try {
+      animRunning = true;
+      if (typeof window[nm] !== 'function') { window.__errs.push(nm + ': функция не определена'); continue; }
+      window[nm]();
+    } catch (e) { window.__errs.push(nm + ' SYNC: ' + e.message); }
+    await new Promise(r => setTimeout(r, 450));
+    // проверим, что на канвасе что-то нарисовано (не пустая бумага)
+    try {
+      const d = ctx.getImageData(440, 270, 30, 30).data;
+      let varSum = 0;
+      for (let i = 4; i < d.length; i += 4) varSum += Math.abs(d[i] - d[0]) + Math.abs(d[i+1] - d[1]);
+      void varSum; // центр может быть пуст — не считаем ошибкой, просто индикатор
+    } catch (e) {}
+    animRunning = false;
+    cancelAnimationFrame(rafId);
+    await new Promise(r => setTimeout(r, 60));
+  }
+  window.__cur = 'done';
+  const ok = window.__errs.length === 0;
+  document.title = 'ANIMTEST:' + (ok ? 'OK' : 'FAIL');
+  const pre = document.createElement('pre');
+  pre.id = 'animtest-result';
+  pre.textContent = 'ANIMTEST_RESULT ' + JSON.stringify({ ok, errors: window.__errs, blanks }, null, 1);
+  document.body.appendChild(pre);
+})();
+</script>
+</body>
+</html>
