@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cupsize #8 — 2D vs 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;700&family=Caveat+Brush&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#e8e1d4;font-family:'Caveat',cursive;color:#1a1612;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+  .bar{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#f2ede6;border-bottom:1.5px solid rgba(26,22,18,.25);flex:0 0 auto}
+  .bar h1{font-family:'Caveat Brush',cursive;font-size:22px;font-weight:400}
+  .bar h1 small{color:#b8220e}
+  .pbtn{font-size:22px;background:none;border:1.6px solid rgba(26,22,18,.5);border-radius:10px 13px 10px 14px;width:44px;height:38px;cursor:pointer;font-family:inherit}
+  .pbtn:hover{border-color:#b8220e;color:#b8220e}
+  #scrub{flex:1;cursor:pointer;accent-color:#b8220e}
+  .tm{font-size:16px;min-width:42px;text-align:center}
+  .stage{flex:1;display:flex;min-height:0}
+  .panel{flex:1;position:relative;border-right:1.5px solid rgba(26,22,18,.25);overflow:hidden;background:#f2ede6}
+  .panel:last-child{border-right:none}
+  .panel canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+  .tag{position:absolute;top:10px;left:12px;z-index:5;font-size:17px;background:rgba(242,237,230,.8);border:1.4px solid rgba(26,22,18,.4);border-radius:8px 11px 8px 12px;padding:3px 12px}
+  .tag b{color:#b8220e}
+  #flash3d{position:absolute;inset:0;background:#962e2e;opacity:0;pointer-events:none;z-index:4}
+  #mamaText{position:absolute;left:0;right:0;top:30%;text-align:center;font-size:30px;color:#962e2e;opacity:0;z-index:5;pointer-events:none;text-shadow:0 1px 0 #f2ede6}
+  #lyric{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:18px;color:rgba(26,22,18,.6);z-index:5;pointer-events:none}
+  .hidden-stub{position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<script>window.__errs=[];window.onerror=function(m,s,l,c){window.__errs.push(m+' @'+l+':'+c);document.title='CMP8_ERR:'+m;return false;};</script>
+
+<div class="bar">
+  <h1>Cupsize #8 «Ты уебалась головой» — <small>2D ↔ 3D сравнение</small></h1>
+  <button class="pbtn" id="play">▶</button>
+  <span class="tm" id="tcur">0:00</span>
+  <input type="range" id="scrub" min="0" max="1000" value="0">
+  <span class="tm" id="ttot">0:00</span>
+</div>
+
+<div class="stage">
+  <div class="panel" id="panel2d">
+    <div class="tag"><b>2D</b> · canvas (текущий движок)</div>
+    <!-- ВНИМАНИЕ: это и есть pStage для main.js -->
+    <div id="pStage" style="position:absolute;inset:0">
+      <canvas id="animCanvas"></canvas>
+      <div id="ytWrap"></div>
+    </div>
+    <div id="lyric"></div>
+  </div>
+  <div class="panel" id="panel3d">
+    <div class="tag"><b>3D</b> · three.js (toon + контур)</div>
+    <canvas id="gl3d"></canvas>
+    <div id="flash3d"></div>
+    <div id="mamaText">мама, я люблю тебя</div>
+  </div>
+</div>
+
+<!-- скрытый DOM, который нужен main.js -->
+<div class="hidden-stub">
+  <section id="pg0" class="page active"><button id="btnYes"></button><button id="btnNo"></button></section>
+  <section id="pg1" class="page"><div id="boyWrap"><img id="boyImg"><canvas id="eyeCanvas"></canvas></div><span id="heroTitle"></span><p id="cryCount"></p></section>
+  <section id="pg2" class="page"><button id="backBtn"></button><div id="tlWrap"><img id="tlImg"></div><div class="ya-section"><a id="yaPlayer"></a></div></section>
+  <div id="playerOverlay"><div id="playerInner">
+    <button id="pPrev"></button>
+    <div class="p-center-btns"><button id="pPlay"></button><button id="pLoop"></button><button id="pClose"></button></div>
+    <button id="pNext"></button>
+    <input type="range" id="pVolSlider" min="0" max="1" step="0.01" value="0.85">
+    <div id="pViewToggle"><button id="btnAnim"></button><button id="btnVideo"></button><button id="btnLyrics"></button></div>
+    <span id="pTimeCur"></span><div id="pProgress"><div id="pFill"></div></div><span id="pTimeTot"></span>
+    <span id="pNum"></span><span id="pCounter"></span><span id="pTitle"></span>
+    <div class="p-meta-row"><span id="pMood"></span><a id="pYtLink"></a></div>
+    <div id="lyricsPanel"></div>
+  </div></div>
+  <div id="balloonWrap"><img id="balloonImg"></div>
+  <div id="pinkVeil"></div><div id="konamiMsg"></div><div id="partyPop"></div>
+  <div class="lightbox" id="lightbox"><img id="lightboxImg"></div>
+</div>
+
+<script src="lyrics.js"></script>
+<script src="karaoke.js"></script>
+<script src="main.js"></script>
+<script src="story-anim.js"></script>
+<script src="story-ui.js"></script>
+<script>
+// ── общий прогресс из howl ──────────────────────────────────────────────
+function P(){ try{ if(howl){ const s=howl.seek(),d=howl.duration(); if(typeof s==='number'&&d>0) return Math.min(1,Math.max(0,s/d)); } }catch(e){} return 0; }
+function fmt(s){ if(!isFinite(s)||s<0)return '0:00'; return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+
+// ── 2D: поднимаем движок на #animCanvas ─────────────────────────────────
+currentTrack = { n:8 };
+function size2d(){ resizeCanvas(); }
+window.addEventListener('resize', ()=>{ size2d(); fit3d(); });
+size2d();
+animRunning = true;
+head();  // 2D-анимация трека 8 (читает прогресс из howl)
+
+// строка караоке снизу 2D
+const kl = (typeof parseLRC==='function' && KARAOKE[8]) ? parseLRC(KARAOKE[8]) : [];
+const lyricEl = document.getElementById('lyric');
+
+// ── управление звуком (общий для обеих сторон) ──────────────────────────
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub');
+const tcur=document.getElementById('tcur'), ttot=document.getElementById('ttot');
+let started=false;
+playBtn.addEventListener('click', ()=>{
+  if(!started){ started=true; currentTrack={n:8}; playAudio(8); animRunning=true; }
+  else if(howl){ howl.playing()?howl.pause():howl.play(); }
+  playBtn.textContent = (howl&&howl.playing())?'⏸':'▶';
+});
+let seeking=false;
+scrub.addEventListener('input', ()=>{ seeking=true; if(howl&&howl.duration()){ howl.seek(scrub.value/1000*howl.duration()); } });
+scrub.addEventListener('change', ()=>{ seeking=false; });
+setInterval(()=>{
+  if(!howl)return; const d=howl.duration()||0, s=howl.seek()||0;
+  if(d>0){ if(!seeking) scrub.value=s/d*1000; tcur.textContent=fmt(s); ttot.textContent=fmt(d); }
+  playBtn.textContent = howl.playing()?'⏸':'▶';
+  // караоке
+  let cur=''; for(const l of kl){ if(l.time<=s) cur=l.text; else break; } lyricEl.textContent=cur;
+},150);
+
+// ════════════════════════════════════════════════════════════════════════
+//  3D СЦЕНА (three.js) — арка #8 в реальном 3D с карандашным toon+контуром
+// ════════════════════════════════════════════════════════════════════════
+const gl=document.getElementById('gl3d');
+const renderer=new THREE.WebGLRenderer({canvas:gl,antialias:true});
+renderer.setClearColor(0xf2ede6,1);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(48,1,0.1,300);
+function fit3d(){ const p=document.getElementById('panel3d'); const w=p.clientWidth,h=p.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+
+// тун-градиент
+const gcv=document.createElement('canvas'); gcv.width=4; gcv.height=1;
+const g2=gcv.getContext('2d'); ['#4a3f34','#8a7563','#c4b39e','#efe8db'].forEach((c,i)=>{g2.fillStyle=c;g2.fillRect(i,0,1,1);});
+const grad=new THREE.CanvasTexture(gcv); grad.minFilter=THREE.NearestFilter; grad.magFilter=THREE.NearestFilter;
+const toon=c=>new THREE.MeshToonMaterial({color:c,gradientMap:grad});
+function outline(mesh,k){ const o=new THREE.Mesh(mesh.geometry,new THREE.MeshBasicMaterial({color:0x1a1612,side:THREE.BackSide})); o.scale.multiplyScalar(k); mesh.add(o); }
+function part(geo,c,k,parent){ const m=new THREE.Mesh(geo,toon(c)); outline(m,k||1.05); (parent||scene).add(m); return m; }
+function fig(col,fem,parent){
+  const g=new THREE.Group(); (parent||scene).add(g);
+  part(new THREE.SphereGeometry(0.62,16,16),0xe9dcc8,1.07,g).position.set(0,1.9,0);
+  part(new THREE.CylinderGeometry(0.55,0.7,2.1,14),col,1.05,g).position.set(0,0.55,0);
+  const _la=part(new THREE.CylinderGeometry(0.15,0.15,1.5,8),col,1.07,g); _la.position.set(-0.7,0.7,0); _la.rotation.z=0.5;
+  const _ra=part(new THREE.CylinderGeometry(0.15,0.15,1.5,8),col,1.07,g); _ra.position.set(0.7,0.7,0); _ra.rotation.z=-0.5;
+  if(fem){ const h=part(new THREE.SphereGeometry(0.66,16,16),0x5a4a3a,1.04,g); h.position.set(0,2.05,-0.12); h.scale.set(1,0.85,1.1); }
+  return g;
+}
+
+// — комната —
+const room=new THREE.Group(); scene.add(room);
+part(new THREE.BoxGeometry(22,0.5,15),0xe4ddd0,1.01,room).position.set(0,-2.2,0);
+part(new THREE.BoxGeometry(22,13,0.5),0xece5d8,1.005,room).position.set(0,4,-7);
+part(new THREE.BoxGeometry(0.5,13,15),0xe7e0d2,1.005,room).position.set(-11,4,0);
+part(new THREE.BoxGeometry(4.4,4.4,0.3),0x2b2b2b,1.04,room).position.set(4.5,4,-6.7);
+const pane=new THREE.Mesh(new THREE.PlaneGeometry(3.7,3.7),new THREE.MeshBasicMaterial({color:0xf0c074})); pane.position.set(4.5,4,-6.5); room.add(pane);
+const photo=part(new THREE.BoxGeometry(2,2.4,0.2),0x3a2f25,1.05,room); photo.position.set(-4.5,4.4,-6.7);
+// трещина на фото (красные линии, скрыты пока)
+const crack=new THREE.Group(); photo.add(crack); crack.visible=false;
+for(let i=0;i<6;i++){ const a=Math.random()*6.28,len=0.4+Math.random()*0.7; const m=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,len,4),new THREE.MeshBasicMaterial({color:0x962e2e})); m.position.set(Math.cos(a)*len*0.4,Math.sin(a)*len*0.4,0.12); m.rotation.z=a; crack.add(m); }
+part(new THREE.BoxGeometry(6,0.4,3),0xb79b78,1.03,room).position.set(0,-0.2,0.5);
+[[-2.6,1.2],[2.6,1.2],[-2.6,-0.2],[2.6,-0.2]].forEach(p=>part(new THREE.CylinderGeometry(0.16,0.16,2,8),0x8a7158,1.06,room).position.set(p[0],-1.2,p[1]));
+part(new THREE.CylinderGeometry(0.18,0.22,0.9,10),0x4a6a4a,1.06,room).position.set(-0.6,0.4,0.7);
+part(new THREE.CylinderGeometry(0.18,0.22,0.9,10),0x4a6a4a,1.06,room).position.set(0.6,0.4,0.7);
+const bulb=part(new THREE.SphereGeometry(0.28,12,12),0xffe6a0,1.04,room); bulb.position.set(0,5.4,1);
+part(new THREE.CylinderGeometry(0.02,0.02,3,6),0x1a1612,1.0,room).position.set(0,7,1);
+const fMale=fig(0x6a7a8a,false,room); fMale.position.set(-1.7,0,0.5);
+const fFem =fig(0xb86a7a,true ,room); fFem.position.set(1.7,0,0.5);
+
+// — поезд + город —
+const train=new THREE.Group(); scene.add(train); train.visible=false;
+part(new THREE.BoxGeometry(40,0.4,1.2),0x6a5a48,1.0,train).position.set(0,-2,2);   // рельс
+const car=new THREE.Group(); train.add(car);
+part(new THREE.BoxGeometry(7,3.2,2.4),0x7a6a86,1.02,car).position.set(0,0,0);
+[-2.2,2.2].forEach(x=>{ const w=part(new THREE.CylinderGeometry(0.6,0.6,0.4,12),0x2b2b2b,1.05,car); w.position.set(x,-1.8,0); w.rotation.x=Math.PI/2; });
+for(let i=0;i<3;i++){ const w=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.3),new THREE.MeshBasicMaterial({color:0xf0c074})); w.position.set(-2+i*2,0.3,1.21); car.add(w); }
+const cityBoxes=[];
+for(let i=0;i<10;i++){ const h=4+Math.random()*8; const b=part(new THREE.BoxGeometry(2.5,h,2.5),0xd8cfc0,1.01,train); b.position.set(-20+i*4.5,h/2-2,-8); cityBoxes.push(b); }
+
+// — платформа + мама —
+const platform=new THREE.Group(); scene.add(platform); platform.visible=false;
+part(new THREE.BoxGeometry(12,0.6,4),0xcabfae,1.01,platform).position.set(0,-2,0);
+const mama=fig(0x8a6a6a,true,platform); mama.position.set(3,0,0); mama.scale.setScalar(0.9);
+const mglow=new THREE.PointLight(0xffcc77,0,20); platform.add(mglow); mglow.position.set(3,2,1);
+
+// свет
+const amb=new THREE.AmbientLight(0xfff4e0,0.75); scene.add(amb);
+const dir=new THREE.DirectionalLight(0xffffff,0.7); dir.position.set(-6,10,6); scene.add(dir);
+const warm=new THREE.PointLight(0xffcc77,1.1,22); warm.position.set(0,5.2,1); scene.add(warm);
+
+const flash3d=document.getElementById('flash3d'), mamaText=document.getElementById('mamaText');
+const camPos=new THREE.Vector3(0,3.4,11), camLook=new THREE.Vector3(0,1.4,-1);
+const _look=new THREE.Vector3(0,1.4,-1);
+let tt=0;
+function lerp(a,b,k){ return a+(b-a)*k; }
+
+function update3D(p){
+  tt+=0.016;
+  // дыхание фигур
+  fMale.position.y=Math.sin(tt*1.6)*0.05; fFem.position.y=(p<0.30?Math.sin(tt*1.6+1)*0.05:fFem.position.y);
+  bulb.position.x=Math.sin(tt*0.6)*0.25; warm.position.x=bulb.position.x;
+  let shake=0; let flashA=0; let mamaA=0;
+
+  if(p<0.30){                    // комната
+    room.visible=true; train.visible=false; platform.visible=false;
+    amb.intensity=0.75; warm.intensity=1.1; dir.intensity=0.7;
+    fFem.rotation.z=0; fFem.position.set(1.7,Math.sin(tt*1.6+1)*0.05,0.5);
+    crack.visible=false;
+    camPos.set(Math.sin(tt*0.25)*5.5,3.4+Math.sin(tt*0.4)*0.3,10.5+Math.cos(tt*0.25)*1.5); _look.set(0,1.4,-1);
+  } else if(p<0.42){             // удар головой
+    room.visible=true; train.visible=false; platform.visible=false;
+    const k=(p-0.30)/0.12;
+    fFem.rotation.z=-k*1.45; fFem.position.set(1.7-k*1.2,lerp(0.05,-1.6,k),0.5);
+    crack.visible=true; crack.scale.setScalar(0.2+k);
+    photo.rotation.z=k*0.12;
+    shake=Math.max(0,1-k*4)*0.4; flashA=Math.max(0,0.5-k*3);
+    warm.intensity=1.1-k*0.5;
+    camPos.set(2.5,2.6,7.5); _look.set(1.2,0.4,0);
+  } else if(p<0.62){            // пустота
+    room.visible=true; train.visible=false; platform.visible=false;
+    fFem.visible=false;
+    amb.intensity=0.4; warm.intensity=0.5; dir.intensity=0.4;
+    camPos.set(lerp(-1,-3,(p-0.42)/0.2),1.8,6.5); _look.set(-1.7,0.6,0.5);
+  } else if(p<0.86){           // поезд
+    room.visible=false; train.visible=true; platform.visible=false;
+    fFem.visible=true;
+    amb.intensity=0.7; dir.intensity=0.7;
+    const k=(p-0.62)/0.24;
+    cityBoxes.forEach((b,i)=>{ b.position.x=((-20+i*4.5 - k*40)%45+45)%45-22; });
+    car.position.y=Math.sin(tt*3)*0.12;
+    camPos.set(-7+Math.sin(tt*0.3),1.5,9); _look.set(0,0,2);
+  } else {                      // мама
+    room.visible=false; train.visible=true; platform.visible=true;
+    const k=(p-0.86)/0.14;
+    mglow.intensity=1.2; mamaA=Math.min(1,k*2);
+    mama.position.y=Math.sin(tt*1.4)*0.05;
+    mama.children[3] && (mama.rotation.z=Math.sin(tt*2)*0.06);
+    camPos.set(lerp(-7,1,k),1.6,lerp(9,7,k)); _look.set(3,1,0);
+  }
+  // плавная камера + тряска
+  camera.position.lerp(camPos,0.08);
+  camera.position.x+=(Math.random()-0.5)*shake; camera.position.y+=(Math.random()-0.5)*shake;
+  camLook.lerp(_look,0.08); camera.lookAt(camLook);
+  flash3d.style.opacity=flashA; mamaText.style.opacity=mamaA;
+}
+
+function loop(){ requestAnimationFrame(loop); update3D(P()); renderer.render(scene,camera); }
+fit3d(); loop();
+window.__CMP8=true;
+setTimeout(()=>{ if(!window.__errs.length) document.title='CMP8_OK'; }, 1500);
+</script>
+</body>
+</html>
