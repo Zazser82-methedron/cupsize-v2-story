@@ -5,6 +5,8 @@
 
 // ─── Тайминг / прогресс ───────────────────────────────────────────────────────
 let _frame = 0, _sk = 0, _pg = -1;
+// пер-сценовые пулы частиц (привязка к активной сцене → нет переноса деталей между кадрами)
+let _scenePools = {}, _sceneCur = null, _trackN = -2;
 function boil(){ return Math.floor(_frame/5); }
 // стабильный «карандашный» дребезг: одинаков внутри кадра, меняется раз в ~5 кадров
 function ww(amp){ const s=Math.sin((_sk++ + boil()*53.7)*12.9898)*43758.5453; return ((s-Math.floor(s))-0.5)*amp; }
@@ -17,7 +19,14 @@ function prog(){
   return Math.max(0,Math.min(1,_pg));
 }
 const EZ={ io:t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2, out:t=>1-Math.pow(1-t,3), in:t=>t*t*t,
-  bounce:t=>Math.abs(Math.sin(t*Math.PI)), pulse:t=>0.5-0.5*Math.cos(t*Math.PI*2) };
+  bounce:t=>Math.abs(Math.sin(t*Math.PI)), pulse:t=>0.5-0.5*Math.cos(t*Math.PI*2),
+  back:t=>1+2.70158*Math.pow(t-1,3)+1.70158*Math.pow(t-1,2),                                   // доводка с замахом
+  elastic:t=>t<=0?0:t>=1?1:Math.pow(2,-10*t)*Math.sin((t*10-0.75)*2.0943951)+1 };               // упругий приход
+// органика для «живости» — вместо чистого синуса
+function _h1(i){ const s=Math.sin(i*127.1)*43758.5453; return s-Math.floor(s); }
+function nz(x){ const i=Math.floor(x),f=x-i,u=f*f*(3-2*f); return _h1(i)+(_h1(i+1)-_h1(i))*u; }  // плавный value-noise [0..1]
+function breathe(seed){ return Math.sin(_frame*0.045+seed)*0.6+Math.sin(_frame*0.017+seed*1.7)*0.4; } // [-1..1] орг.дыхание
+function blinkAt(seed){ const per=150+Math.floor((seed%1+1)*40); return ((_frame+Math.floor(seed*53))%per)<6; }
 function T(){ return _frame; }
 
 // ─── Аудио-анализ (Web Audio поверх Howler) ──────────────────────────────────
@@ -94,6 +103,8 @@ function bg(W,H){
   ctx.clearRect(0,0,W,H); ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
   const c=accRGB();
   ctx.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},0.035)`; ctx.fillRect(0,0,W,H);
+  const tn=(typeof currentTrack!=='undefined'&&currentTrack)?currentTrack.n:-1;
+  if(tn!==_trackN){ _trackN=tn; _scenePools={}; _sceneCur=null; }   // новый трек → чистим пулы
   _sk=0; _frame++; audTick();
 }
 
@@ -107,34 +118,44 @@ function srect(x,y,w2,h2,w){ spath([[x,y],[x+w2,y],[x+w2,y+h2],[x,y+h2]],true,w)
 
 // ─── Сцены ────────────────────────────────────────────────────────────────────
 // scenes(p, [fn,fn,...]) — равные доли с кроссфейдом (как v2)
+// пер-сценовый пул частиц (живёт и гаснет ВНУТРИ своей сцены → нет переноса между кадрами)
+function _scenePool(key){ let pl=_scenePools[key]; if(!pl){ pl=mkParts(420); _scenePools[key]=pl; } return pl; }
+function emit(o){ _scenePool(_sceneCur||'__def').spawn(o); }
+function flushParts(){ const d=_scenePools['__def']; if(d){ d.step(); d.draw(); } }   // для частиц вне сцен (в конце кадра трека)
+// рендер одной сцены с её пулом частиц под её alpha
+function _renderScene(key,a,lp,fn){
+  const prev=_sceneCur; _sceneCur=key; const pool=_scenePool(key);
+  ctx.save(); ctx.globalAlpha*=a; fn(lp,a); pool.step(); pool.draw(); ctx.restore();
+  _sceneCur=prev;
+}
+// scenes(p,[fn,...]) — равные доли, переход «дип в бумагу» (две сцены НИКОГДА не накладываются)
 function scenes(p,arr){
-  const n=arr.length, seg=1/n, fade=Math.min(0.045,seg*0.35);
+  const n=arr.length, seg=1/n, fade=Math.min(0.05,seg*0.45);
   for(let i=0;i<n;i++){
     const start=i*seg, end=start+seg;
-    if(p<start-fade||p>end+fade) continue;
+    if(p<start||p>end) continue;                    // каждая сцена владеет своим сегментом эксклюзивно
     let a=1;
-    if(i>0 && p<start+fade) a=(p-start+fade)/(2*fade);
-    if(i<n-1 && p>end-fade) a=Math.min(a,(end+fade-p)/(2*fade));
+    if(i>0 && p<start+fade) a=(p-start)/fade;        // проявление из бумаги
+    if(i<n-1 && p>end-fade) a=Math.min(a,(end-p)/fade); // уход в бумагу
     a=Math.max(0,Math.min(1,a)); if(a<=0.002) continue;
     const lp=Math.max(0,Math.min(1,(p-start)/seg));
-    ctx.save(); ctx.globalAlpha=a; arr[i](lp,a); ctx.restore();
+    _renderScene('S'+i,a,lp,arr[i]);
   }
 }
 function lastP(p,fromN){ return Math.max(0,Math.min(1,(p-(fromN-1)/fromN)*fromN)); }
 // span/act — произвольные интервалы [from..to] из раскадровки, с кроссфейдом
 function span(p,from,to,fade){
-  fade=fade==null?0.035:fade;
-  const lo=from-(from>0.001?fade:0), hi=to+(to<0.999?fade:0);
-  if(p<lo||p>hi)return null;
+  fade=fade==null?0.02:fade;
+  if(p<from||p>to)return null;                        // акт строго в своих границах (нет наезда на соседа)
   let a=1;
-  if(from>0.001&&p<from+fade)a=Math.min(a,(p-lo)/(2*fade));
-  if(to<0.999&&p>to-fade)a=Math.min(a,(hi-p)/(2*fade));
+  if(from>0.001&&p<from+fade)a=Math.min(a,(p-from)/fade);   // проявление из бумаги
+  if(to<0.999&&p>to-fade)    a=Math.min(a,(to-p)/fade);     // уход в бумагу
   const lp=Math.max(0,Math.min(1,(p-from)/Math.max(0.0001,to-from)));
   return {a:Math.max(0,Math.min(1,a)),lp};
 }
 function act(p,from,to,fn,fade){
   const s=span(p,from,to,fade); if(!s||s.a<=0.003)return;
-  ctx.save(); ctx.globalAlpha*=s.a; fn(s.lp,s.a); ctx.restore();
+  _renderScene('A'+from+'_'+to,s.a,s.lp,fn);
 }
 function camShake(amp){ ctx.translate(ww(amp),ww(amp)); }
 
@@ -144,7 +165,11 @@ function figure(x,y,o){
   o=o||{};
   const s=o.s||1, a=o.a==null?0.82:o.a, ph=o.ph||0, lean=o.lean||0, fem=o.fem;
   const raise=o.raise||0, rl=o.raiseL!=null?o.raiseL:raise, rr=o.raiseR!=null?o.raiseR:raise;
-  ctx.save(); ctx.translate(x,y); if(o.flip)ctx.scale(-1,1); ctx.rotate(lean); ctx.scale(s,s);
+  const seed=o.seed!=null?o.seed:(x*0.017+y*0.0031);
+  const br=(o.breath===false)?0:breathe(seed);                 // лёгкое дыхание (idle-жизнь)
+  const blink=(o.blink===false)?false:blinkAt(seed);
+  ctx.save(); ctx.translate(x,y+br*0.6); if(o.flip)ctx.scale(-1,1); ctx.rotate(lean+(o.breath===false?0:br*0.004)); ctx.scale(s,s);
+  o._blink=blink;
   function armPair(){
     const aw=Math.sin(ph)*(o.swing||0);
     sl(0,-12,-10,-2+rl*-7,1.3/s); sl(-10,-2+rl*-7,-16+aw,(rl>0.3?-12-rl*8:9),1.2/s);
@@ -157,7 +182,7 @@ function figure(x,y,o){
     if(fem){ const fl=o.hairFlow||0, hl=o.hairLong==null?-6:o.hairLong;
       for(let i=-4;i<=4;i++) sl(i*2.1,-37,i*3+fl,hl,0.9); }
     else { for(let i=-3;i<=3;i++) sl(i*2.4,-38,i*2.6,-33,0.7); } }
-  if(o.face) drawFace(0,-30,o.face,a);
+  if(o.face) drawFace(0,-30,o.face,a,o._blink);
   ctx.restore();
   ink(a,1.4/s);
   const tx=Math.sin(ph)*1.4;
@@ -178,11 +203,12 @@ function figure(x,y,o){
   ctx.restore();
 }
 // drawFace(x,y,type,a): 'happy','sad','angry','cry','flat','x','shock','love','calm'
-function drawFace(x,y,type,a){
+function drawFace(x,y,type,a,blink){
   if(type==='x'){ red(a,1); sl(x-6,y-4,x-2,y,0.5); sl(x-2,y-4,x-6,y,0.5); sl(x+2,y-4,x+6,y,0.5); sl(x+6,y-4,x+2,y,0.5); return; }
   if(type==='love'){ drawHeart(x-3.5,y-2,3,a); drawHeart(x+3.5,y-2,3,a); ink(a,0.9); sarc(x,y+2,4,0.25,Math.PI-0.25,0.5); return; }
   if(type==='calm'){ ink(a,0.8); sarc(x-3.5,y-2,2,0.2,Math.PI-0.2,0.5); sarc(x+3.5,y-2,2,0.2,Math.PI-0.2,0.5); sl(x-2,y+5,x+2,y+5,0.5); return; }
-  fink(a); ctx.beginPath(); ctx.arc(x-3.5,y-2,1.3,0,7); ctx.arc(x+3.5,y-2,1.3,0,7); ctx.fill();
+  if(blink){ ink(a,0.9); sl(x-5,y-2,x-2,y-2,0.6); sl(x+2,y-2,x+5,y-2,0.6); }
+  else { fink(a); ctx.beginPath(); ctx.arc(x-3.5,y-2,1.3,0,7); ctx.arc(x+3.5,y-2,1.3,0,7); ctx.fill(); }
   ink(a,0.9);
   if(type==='sad') sarc(x,y+7,4,Math.PI*1.15,Math.PI*1.85,0.5);
   else if(type==='happy') sarc(x,y+2,4,0.25,Math.PI-0.25,0.5);
